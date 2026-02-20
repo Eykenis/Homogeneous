@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\Github Repo\Homogeneous\build\CMakeFiles\b20eb2cf590f62cb2a408d2f5c9102e6\update_mappings.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\Github Repo\Homogeneous\external\GLFW\glfw-3.4\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\Github Repo\Homogeneous\external\GLFW\glfw-3.4\src\mappings.h.in">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="D:\Github Repo\Homogeneous\external\GLFW\glfw-3.4\CMake\GenerateMappings.cmake" />
+    <None Include="D:\Github Repo\Homogeneous\build\external\GLFW\glfw-3.4\src\CMakeFiles\update_mappings" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{0B15DFBF-4333-32CF-9823-BD2D56A4DA04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{102FC19B-4C2A-3FEB-8F6A-2B89433B1150}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,16 @@
+D:/Github Repo/Homogeneous/build/CMakeFiles/hello_triangle.dir
+D:/Github Repo/Homogeneous/build/CMakeFiles/INSTALL.dir
+D:/Github Repo/Homogeneous/build/CMakeFiles/ALL_BUILD.dir
+D:/Github Repo/Homogeneous/build/CMakeFiles/ZERO_CHECK.dir
+D:/Github Repo/Homogeneous/build/external/CMakeFiles/glad.dir
+D:/Github Repo/Homogeneous/build/external/CMakeFiles/imgui.dir
+D:/Github Repo/Homogeneous/build/external/CMakeFiles/INSTALL.dir
+D:/Github Repo/Homogeneous/build/external/GLFW/glfw-3.4/CMakeFiles/uninstall.dir
+D:/Github Repo/Homogeneous/build/external/GLFW/glfw-3.4/CMakeFiles/INSTALL.dir
+D:/Github Repo/Homogeneous/build/external/GLFW/glfw-3.4/CMakeFiles/ALL_BUILD.dir
+D:/Github Repo/Homogeneous/build/external/GLFW/glfw-3.4/src/CMakeFiles/glfw.dir
+D:/Github Repo/Homogeneous/build/external/GLFW/glfw-3.4/src/CMakeFiles/update_mappings.dir
+D:/Github Repo/Homogeneous/build/external/GLFW/glfw-3.4/src/CMakeFiles/INSTALL.dir
+D:/Github Repo/Homogeneous/build/external/GLFW/glfw-3.4/docs/CMakeFiles/INSTALL.dir
+D:/Github Repo/Homogeneous/build/tests/CMakeFiles/homogeneous_tests.dir
+D:/Github Repo/Homogeneous/build/tests/CMakeFiles/INSTALL.dir
