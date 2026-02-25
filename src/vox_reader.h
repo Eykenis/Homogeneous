@@ -1,6 +1,7 @@
 /**
  * VOX File Reader
- *
+ * ***THIS FILE IS WRITTEN BY VIBE CODING ASSISTANT***
+ * 
  * Reads MagicaVoxel .vox format files.
  * The .vox format is a binary chunk-based format used for voxel art.
  *
@@ -19,6 +20,7 @@
 
 #include <vector>
 #include <array>
+#include <map>
 #include <cstdint>
 #include <string>
 
@@ -54,12 +56,45 @@ struct VoxelModel {
 };
 
 /**
+ * Scene graph node types for VOX format
+ */
+struct VoxTransformNode {
+    int32_t nodeId;
+    int32_t childNodeId;
+    int32_t layerId;
+    int32_t tx, ty, tz;  // Translation
+};
+
+struct VoxGroupNode {
+    int32_t nodeId;
+    std::vector<int32_t> childNodeIds;
+};
+
+struct VoxShapeNode {
+    int32_t nodeId;
+    int32_t modelId;
+};
+
+/**
+ * Per-model world-space translation computed from scene graph
+ */
+struct ModelTransform {
+    int32_t tx, ty, tz;
+};
+
+/**
  * Complete VOX file representation
  */
 struct VoxFile {
     int version;                            // File version (typically 150 for MagicaVoxel)
     std::vector<VoxelModel> models;         // All models in the file
     std::array<RGBAColor, 256> palette;    // Color palette (index 0 is unused)
+
+    // Scene graph data
+    std::map<int32_t, VoxTransformNode> transformNodes;
+    std::map<int32_t, VoxGroupNode> groupNodes;
+    std::map<int32_t, VoxShapeNode> shapeNodes;
+    std::vector<ModelTransform> modelTransforms; // World transform per model
 };
 
 /**
@@ -140,6 +175,17 @@ private:
      * @param size The size of content to skip
      */
     static void skipChunkContent(std::ifstream& file, uint32_t size);
+
+    // Scene graph parsing
+    static std::string readString(std::ifstream& file);
+    static std::map<std::string, std::string> readDict(std::ifstream& file);
+    static void parseTransformNode(std::ifstream& file, VoxFile& voxFile, uint32_t contentSize);
+    static void parseGroupNode(std::ifstream& file, VoxFile& voxFile, uint32_t contentSize);
+    static void parseShapeNode(std::ifstream& file, VoxFile& voxFile, uint32_t contentSize);
+    static void computeModelTransforms(VoxFile& voxFile);
+    static void walkSceneGraph(const VoxFile& voxFile, int32_t nodeId,
+                               int32_t accTx, int32_t accTy, int32_t accTz,
+                               std::vector<ModelTransform>& out);
 };
 
 #endif // VOX_READER_H

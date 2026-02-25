@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
+#include <cstdio>
 #include <stdexcept>
 
 // Magic number for VOX files
@@ -21,6 +22,9 @@ static constexpr char CHUNK_ID_MAIN[4] = {'M', 'A', 'I', 'N'};
 static constexpr char CHUNK_ID_SIZE[4] = {'S', 'I', 'Z', 'E'};
 static constexpr char CHUNK_ID_XYZI[4] = {'X', 'Y', 'Z', 'I'};
 static constexpr char CHUNK_ID_RGBA[4] = {'R', 'G', 'B', 'A'};
+static constexpr char CHUNK_ID_nTRN[4] = {'n', 'T', 'R', 'N'};
+static constexpr char CHUNK_ID_nGRP[4] = {'n', 'G', 'R', 'P'};
+static constexpr char CHUNK_ID_nSHP[4] = {'n', 'S', 'H', 'P'};
 
 VoxFile VoxReader::load(const std::string& filepath) {
     VoxFile voxFile;
@@ -66,6 +70,7 @@ VoxFile VoxReader::load(const std::string& filepath) {
     }
 
     file.close();
+    computeModelTransforms(voxFile);
     return voxFile;
 }
 
@@ -185,6 +190,18 @@ void VoxReader::parseMainChunk(std::ifstream& file, VoxFile& voxFile) {
                 skipChunkContent(file, childrenSize);
             }
 
+        } else if (std::memcmp(chunkId, CHUNK_ID_nTRN, 4) == 0) {
+            parseTransformNode(file, voxFile, contentSize);
+            if (childrenSize > 0) skipChunkContent(file, childrenSize);
+
+        } else if (std::memcmp(chunkId, CHUNK_ID_nGRP, 4) == 0) {
+            parseGroupNode(file, voxFile, contentSize);
+            if (childrenSize > 0) skipChunkContent(file, childrenSize);
+
+        } else if (std::memcmp(chunkId, CHUNK_ID_nSHP, 4) == 0) {
+            parseShapeNode(file, voxFile, contentSize);
+            if (childrenSize > 0) skipChunkContent(file, childrenSize);
+
         } else {
             // Unknown chunk - skip content and children
             skipChunkContent(file, contentSize);
@@ -227,4 +244,155 @@ void VoxReader::parseRGBAChunk(std::ifstream& file, VoxFile& voxFile) {
 
 void VoxReader::skipChunkContent(std::ifstream& file, uint32_t size) {
     file.seekg(static_cast<std::streamoff>(size), std::ios::cur);
+}
+
+std::string VoxReader::readString(std::ifstream& file) {
+    uint32_t len = readInt32(file);
+    std::string s(len, '\0');
+    file.read(&s[0], len);
+    return s;
+}
+
+std::map<std::string, std::string> VoxReader::readDict(std::ifstream& file) {
+    std::map<std::string, std::string> dict;
+    uint32_t numPairs = readInt32(file);
+    for (uint32_t i = 0; i < numPairs; ++i) {
+        std::string key = readString(file);
+        std::string value = readString(file);
+        dict[key] = value;
+    }
+    return dict;
+}
+
+void VoxReader::parseTransformNode(std::ifstream& file, VoxFile& voxFile, uint32_t contentSize) {
+    auto startPos = file.tellg();
+
+    VoxTransformNode node;
+    node.nodeId = static_cast<int32_t>(readInt32(file));
+    auto attrs = readDict(file);  // node attributes
+    node.childNodeId = static_cast<int32_t>(readInt32(file));
+    int32_t reservedId = static_cast<int32_t>(readInt32(file)); // reserved (-1)
+    (void)reservedId;
+    node.layerId = static_cast<int32_t>(readInt32(file));
+    uint32_t numFrames = readInt32(file);
+
+    node.tx = 0; node.ty = 0; node.tz = 0;
+    for (uint32_t f = 0; f < numFrames; ++f) {
+        auto frameAttrs = readDict(file);
+        if (f == 0) {
+            auto it = frameAttrs.find("_t");
+            if (it != frameAttrs.end()) {
+                // Parse "x y z" translation string (in VOX coordinate system)
+                int32_t vx, vy, vz;
+                sscanf(it->second.c_str(), "%d %d %d", &vx, &vy, &vz);
+                // Swap Y and Z to match the coordinate swap in parseXYZIChunk
+                node.tx = vx;
+                node.ty = vz;
+                node.tz = vy;
+            }
+        }
+    }
+
+    voxFile.transformNodes[node.nodeId] = node;
+
+    // Skip any remaining bytes
+    auto bytesRead = static_cast<uint32_t>(file.tellg() - startPos);
+    if (bytesRead < contentSize) {
+        skipChunkContent(file, contentSize - bytesRead);
+    }
+}
+
+void VoxReader::parseGroupNode(std::ifstream& file, VoxFile& voxFile, uint32_t contentSize) {
+    auto startPos = file.tellg();
+
+    VoxGroupNode node;
+    node.nodeId = static_cast<int32_t>(readInt32(file));
+    auto attrs = readDict(file);  // node attributes
+    (void)attrs;
+    uint32_t numChildren = readInt32(file);
+    node.childNodeIds.resize(numChildren);
+    for (uint32_t i = 0; i < numChildren; ++i) {
+        node.childNodeIds[i] = static_cast<int32_t>(readInt32(file));
+    }
+
+    voxFile.groupNodes[node.nodeId] = node;
+
+    auto bytesRead = static_cast<uint32_t>(file.tellg() - startPos);
+    if (bytesRead < contentSize) {
+        skipChunkContent(file, contentSize - bytesRead);
+    }
+}
+
+void VoxReader::parseShapeNode(std::ifstream& file, VoxFile& voxFile, uint32_t contentSize) {
+    auto startPos = file.tellg();
+
+    VoxShapeNode node;
+    node.nodeId = static_cast<int32_t>(readInt32(file));
+    auto attrs = readDict(file);  // node attributes
+    (void)attrs;
+    uint32_t numModels = readInt32(file);
+    if (numModels > 0) {
+        node.modelId = static_cast<int32_t>(readInt32(file));
+        auto modelAttrs = readDict(file);  // model attributes
+        (void)modelAttrs;
+    }
+    // Skip remaining models if any (spec says numModels must be 1)
+    voxFile.shapeNodes[node.nodeId] = node;
+
+    auto bytesRead = static_cast<uint32_t>(file.tellg() - startPos);
+    if (bytesRead < contentSize) {
+        skipChunkContent(file, contentSize - bytesRead);
+    }
+}
+
+void VoxReader::walkSceneGraph(const VoxFile& voxFile, int32_t nodeId,
+                                int32_t accTx, int32_t accTy, int32_t accTz,
+                                std::vector<ModelTransform>& out) {
+    // Check if it's a transform node
+    auto tIt = voxFile.transformNodes.find(nodeId);
+    if (tIt != voxFile.transformNodes.end()) {
+        const auto& tn = tIt->second;
+        int32_t newTx = accTx + tn.tx;
+        int32_t newTy = accTy + tn.ty;
+        int32_t newTz = accTz + tn.tz;
+        walkSceneGraph(voxFile, tn.childNodeId, newTx, newTy, newTz, out);
+        return;
+    }
+
+    // Check if it's a group node
+    auto gIt = voxFile.groupNodes.find(nodeId);
+    if (gIt != voxFile.groupNodes.end()) {
+        for (int32_t childId : gIt->second.childNodeIds) {
+            walkSceneGraph(voxFile, childId, accTx, accTy, accTz, out);
+        }
+        return;
+    }
+
+    // Check if it's a shape node
+    auto sIt = voxFile.shapeNodes.find(nodeId);
+    if (sIt != voxFile.shapeNodes.end()) {
+        int32_t modelId = sIt->second.modelId;
+        // Ensure out vector is large enough
+        if (modelId >= static_cast<int32_t>(out.size())) {
+            out.resize(modelId + 1, {0, 0, 0});
+        }
+        out[modelId] = {accTx, accTy, accTz};
+    }
+}
+
+void VoxReader::computeModelTransforms(VoxFile& voxFile) {
+    voxFile.modelTransforms.resize(voxFile.models.size(), {0, 0, 0});
+
+    if (voxFile.transformNodes.empty()) {
+        // No scene graph — single model, no offset needed
+        return;
+    }
+
+    // Root node is always node 0
+    std::vector<ModelTransform> computed;
+    walkSceneGraph(voxFile, 0, 0, 0, 0, computed);
+
+    for (size_t i = 0; i < voxFile.models.size() && i < computed.size(); ++i) {
+        voxFile.modelTransforms[i] = computed[i];
+    }
 }
