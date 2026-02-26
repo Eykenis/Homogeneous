@@ -16,9 +16,9 @@
 
 // First-person camera state
 struct FPSCamera {
-    glm::vec3 position = glm::vec3(50.0f, 50.0f, 80.0f);
-    float yaw   = -90.0f;  // Face towards -Z initially
-    float pitch  = 0.0f;
+    glm::vec3 position = glm::vec3(-300.0f, 440.0f, -450.0f);
+    float yaw   = -290.0f;  // Face towards -Z initially
+    float pitch  = -40.0f;
     float speed  = 50.0f;
     float sensitivity = 0.1f;
     float fov = 45.0f;
@@ -83,6 +83,8 @@ int main()
     std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GLSL Version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
     std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Initialize ImGui
     IMGUI_CHECKVERSION();
@@ -143,7 +145,7 @@ int main()
                 int wy = static_cast<int>(voxData.y) + tr.ty - model.sizeY / 2 - centerY;
                 int wz = static_cast<int>(voxData.z) + tr.tz - model.sizeZ / 2 - centerZ;
 
-                const RGBAColor& paletteColor = voxFile.palette[voxData.colorIndex];
+                const RGBAColor& paletteColor = voxFile.palette[voxData.colorIndex - 1];
                 Voxel voxel(
                     wx, wy, wz,
                     paletteColor.r / 255.0f,
