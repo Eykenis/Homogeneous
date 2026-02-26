@@ -62,7 +62,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create window
-    GLFWwindow* window = glfwCreateWindow(1024, 768, "Homogeneous - Voxel Renderer", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1024, 768, "Homogeneous", nullptr, nullptr);
     if (!window)
     {
         std::cerr << "Failed to create GLFW window" << std::endl;
