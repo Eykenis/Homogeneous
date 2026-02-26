@@ -37,10 +37,9 @@ layout(std430, binding = 1) buffer OctreeBuffer
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const int   MAX_DEPTH = 16;
-const float EPSILON = 1e-5;
+const float EPSILON = 1e-6;
 
 // ── Utility: unpack RGBA8 color ─────────────────────────────────────────────
-// Note: avoid uint function parameters due to NVIDIA GLSL compiler quirk
 #define UNPACK_RGBA(packed) unpackUnorm4x8(packed).abgr
 
 // ── Ray-AABB intersection ───────────────────────────────────────────────────
@@ -179,13 +178,16 @@ void main() {
         vec3 p = ro + rd * hit.a;
 
         // Compute voxel-aligned normal (which face was hit)
+        // Each voxel occupies [floor(p), floor(p)+1), so localP is the
+        // fractional position within the unit voxel cube.
         vec3 normal = vec3(0.0);
-        vec3 localP = fract((p - u_octreeMin) / (u_octreeMax - u_octreeMin) + 0.5);
-        vec3 d = abs(localP - 0.5);
-        float maxD = max(max(d.x, d.y), d.z);
-        if (abs(d.x - maxD) < 0.001) normal = vec3(sign(localP.x - 0.5), 0, 0);
-        else if (abs(d.y - maxD) < 0.001) normal = vec3(0, sign(localP.y - 0.5), 0);
-        else normal = vec3(0, 0, sign(localP.z - 0.5));
+        vec3 voxelCenter = floor(p) + 0.5;
+        vec3 d = p - voxelCenter;           // offset from voxel center, range [-0.5, 0.5]
+        vec3 ad = abs(d);
+        float maxD = max(max(ad.x, ad.y), ad.z);
+        if (abs(ad.x - maxD) < EPSILON) normal = vec3(sign(d.x), 0, 0);
+        else if (abs(ad.y - maxD) < EPSILON) normal = vec3(0, sign(d.y), 0);
+        else normal = vec3(0, 0, sign(d.z));
 
         vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
         float diff = max(dot(normal, lightDir), 0.0);
