@@ -8,10 +8,14 @@ uniform vec3 u_cameraPos;
 uniform vec3 u_cameraTarget;
 uniform float u_fov;
 uniform vec2 u_resolution;
+uniform bool u_shadow;
+uniform bool u_useVoxelColor;
+uniform int u_aoSampleCount;
 
 // Octree bounds (from CPU)
 uniform vec3 u_octreeMin;
 uniform vec3 u_octreeMax;
+const int MAX_AO_SAMPLES = 16;
 
 // ── SSBO binding 0: legacy flat voxel list (kept for compatibility) ──────────
 struct VoxelData { vec4 posAndSize; vec4 color; };
@@ -219,7 +223,8 @@ float ao(vec3 pos, vec3 norm) {
     vec3 origin = pos + norm * 0.02;
     float seed = dot(floor(pos), vec3(127.1, 311.7, 74.7));
     float sca = 1.0;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < MAX_AO_SAMPLES; i++) {
+        if (i >= u_aoSampleCount) break;
         float fi = float(i) + seed;
         vec3 dir = normalize(vec3(
             fract(sin(fi * 12.9898) * 43758.5453) * 2.0 - 1.0,
@@ -267,12 +272,12 @@ void main() {
         vec3 lightDir = normalize(vec3(1.0, 1.0, -1.0));
         float diff = max(dot(normal, lightDir), 0.0);
         float ambient = 0.3;
-        color = hit.rgb * (ambient + diff * 0.7);
-        // float vao = ao(ro + rd * hit.a, normal);
-        // color = mix(color, color * 0.5, vao);
+        color = (u_useVoxelColor ? hit.rgb : vec3(1.0)) * (ambient + diff * 0.7);
+        float vao = ao(ro + rd * hit.a, normal);
+        color = mix(color, color * 0.5, vao);
         // hard shadow
         vec3 origin = ro + rd * hit.a;
-        if (traceShadow(origin + normal * 0.02, lightDir)) {
+        if (u_shadow && traceShadow(origin + lightDir * 0.02, lightDir)) {
             color *= 0.2;
         }
     }

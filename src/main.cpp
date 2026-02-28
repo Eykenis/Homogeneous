@@ -62,7 +62,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create window
-    GLFWwindow* window = glfwCreateWindow(1024, 768, "Homogeneous", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 768, "Homogeneous", nullptr, nullptr);
     if (!window)
     {
         std::cerr << "Failed to create GLFW window" << std::endl;
@@ -247,21 +247,35 @@ int main()
         // Get window size
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
+
+        // UI panel on the right side
+        const float uiPanelWidth = 300.0f;
+        int renderWidth = width - static_cast<int>(uiPanelWidth);
+        if (renderWidth < 1) renderWidth = 1;
+
+        // Render viewport excludes UI panel area
+        glViewport(0, 0, renderWidth, height);
 
         // Clear screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Render voxel using ray marching
-        renderer.render(width, height);
+        // Render voxel using ray casting
+        renderer.render(renderWidth, height);
+
+        // Restore full viewport for ImGui
+        glViewport(0, 0, width, height);
 
         // Start ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // ImGui controls
-        ImGui::Begin("Voxel Ray Marching");
+        // ImGui controls - fixed panel on the right
+        ImGui::SetNextWindowPos(ImVec2(static_cast<float>(renderWidth), 0.0f));
+        ImGui::SetNextWindowSize(ImVec2(uiPanelWidth, static_cast<float>(height)));
+        ImGui::Begin("Control Panel", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus);
         ImGui::Text("%.3f ms/frame (%.1f FPS)",
                     1000.0f / io.Framerate, io.Framerate);
         ImGui::Text("Voxel count: %d", renderer.getVoxelCount());
@@ -273,6 +287,10 @@ int main()
         ImGui::SliderFloat("Speed", &camera.speed, 5.0f, 200.0f);
         ImGui::SliderFloat("Sensitivity", &camera.sensitivity, 0.01f, 0.5f);
         ImGui::SliderFloat("FOV", &camera.fov, 30.0f, 120.0f);
+        ImGui::SeparatorText("Shader Options");
+        ImGui::Checkbox("Raycasting Shadows", &renderer.shadow);
+        ImGui::Checkbox("Use Voxel Colors", &renderer.useVoxelColor);
+        ImGui::InputInt("AO Sample Count", &renderer.aoSampleCount);
 
         ImGui::Separator();
         if (ImGui::Button("Close"))

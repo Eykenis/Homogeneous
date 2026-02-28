@@ -155,6 +155,9 @@ VoxelRenderer::VoxelRenderer()
     , fov(45.0f)
     , voxelDataDirty(true)
     , octreeDataDirty(false)
+    , shadow(true)
+    , aoSampleCount(4)
+    , useVoxelColor(true)
 {
 }
 
@@ -264,6 +267,9 @@ void VoxelRenderer::render(int width, int height)
     shader->setFloat("u_voxelSize", 1.0f);
     shader->setVec3("u_octreeMin", octreeBoundsMin);
     shader->setVec3("u_octreeMax", octreeBoundsMax);
+    shader->setBool("u_shadow", shadow);
+    shader->setInt("u_aoSampleCount", aoSampleCount);
+    shader->setBool("u_useVoxelColor", useVoxelColor);
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, octreeSSBO);

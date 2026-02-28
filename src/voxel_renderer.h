@@ -37,6 +37,11 @@ public:
     void clearVoxels();
     int getVoxelCount() const { return static_cast<int>(voxelData.size()); }
 
+    // public render state
+    bool shadow;
+    int aoSampleCount;
+    bool useVoxelColor;
+
 private:
     void setupQuad();
     void uploadVoxelData();
