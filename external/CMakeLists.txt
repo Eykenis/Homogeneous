@@ -41,6 +41,7 @@ set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/imgui_widgets.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/backends/imgui_impl_glfw.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/backends/imgui_impl_opengl3.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/misc/cpp/imgui_stdlib.cpp
 )
 
 set(IMGUI_HEADERS
@@ -52,12 +53,14 @@ set(IMGUI_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/imstb_truetype.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/backends/imgui_impl_glfw.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/backends/imgui_impl_opengl3.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/misc/cpp/imgui_stdlib.h
 )
 
 add_library(imgui STATIC ${IMGUI_SOURCES} ${IMGUI_HEADERS})
 target_include_directories(imgui PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGui
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/ImGui/misc/cpp
 )
 target_link_libraries(imgui PUBLIC GLFW::GLFW GLAD::GLAD)
 add_library(ImGui::ImGui ALIAS imgui)

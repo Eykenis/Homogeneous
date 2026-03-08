@@ -166,9 +166,9 @@ VoxelRenderer::~VoxelRenderer()
     cleanup();
 }
 
-void VoxelRenderer::init()
+void VoxelRenderer::init(const std::string& vertShader, const std::string& fragShader)
 {
-    shader = new Shader("assets/shaders/raymarching.vert", "assets/shaders/raymarching.frag");
+    shader = new Shader(vertShader.c_str(), fragShader.c_str());
     setupQuad();
 
     // Create SSBO for voxel data (binding point 0)

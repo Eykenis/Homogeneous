@@ -4,6 +4,7 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <vector>
+#include <string>
 #include <memory>
 #include "shader.h"
 #include "voxel.h"
@@ -24,7 +25,8 @@ public:
     VoxelRenderer();
     ~VoxelRenderer();
 
-    void init();
+    void init(const std::string& vertShader = "assets/shaders/raymarching.vert",
+              const std::string& fragShader = "assets/shaders/raymarching.frag");
     void render(int width, int height);
     void cleanup();
 

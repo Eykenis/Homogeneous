@@ -10,9 +10,16 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_stdlib.h>
 #include "voxel_renderer.h"
 #include "voxel.h"
 #include "vox_reader.h"
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define NOMINMAX  // Prevent Windows.h from defining min/max macros
+#include <GLFW/glfw3native.h>
+#include <windows.h>
+#include <commdlg.h>
 
 // First-person camera state
 struct FPSCamera {
@@ -43,6 +50,97 @@ struct FPSCamera {
 };
 
 static FPSCamera camera;
+static std::string vox_path = "assets/voxes/pieta.vox";
+
+// Open Windows file dialog to select .vox file
+bool openFileDialog(std::string& outPath, GLFWwindow* window) {
+    OPENFILENAMEA ofn;
+    char szFile[260] = { 0 };
+
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = glfwGetWin32Window(window);
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = sizeof(szFile);
+    ofn.lpstrFilter = "VOX Files (*.vox)\0*.vox\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+    if (GetOpenFileNameA(&ofn) == TRUE) {
+        outPath = ofn.lpstrFile;
+        return true;
+    }
+    return false;
+}
+
+int loadVoxFile(std::vector<Voxel>& voxels) {
+    try {
+        voxels.clear();
+        std::cout << "Loading .vox..." << std::endl;
+        VoxFile voxFile = VoxReader::load(vox_path);
+
+        std::cout << "VOX file version: " << voxFile.version << std::endl;
+        std::cout << "Number of models: " << voxFile.models.size() << std::endl;
+
+        // Merge all sub-models with their scene graph transforms
+        size_t totalVoxelCount = 0;
+        for (const auto& m : voxFile.models) totalVoxelCount += m.voxels.size();
+        voxels.reserve(totalVoxelCount);
+
+        // Compute overall bounding box center for centering
+        int minX = INT_MAX, minY = INT_MAX, minZ = INT_MAX;
+        int maxX = INT_MIN, maxY = INT_MIN, maxZ = INT_MIN;
+
+        for (size_t mi = 0; mi < voxFile.models.size(); ++mi) {
+            const VoxelModel& model = voxFile.models[mi];
+            const ModelTransform& tr = voxFile.modelTransforms[mi];
+            for (const auto& v : model.voxels) {
+                // VOX scene graph translation is in world space
+                // Voxel local coords are [0, size), transform gives the model origin offset
+                int wx = static_cast<int>(v.x) + tr.tx - model.sizeX / 2;
+                int wy = static_cast<int>(v.y) + tr.ty - model.sizeY / 2;
+                int wz = static_cast<int>(v.z) + tr.tz - model.sizeZ / 2;
+                minX = std::min(minX, wx); maxX = std::max(maxX, wx);
+                minY = std::min(minY, wy); maxY = std::max(maxY, wy);
+                minZ = std::min(minZ, wz); maxZ = std::max(maxZ, wz);
+            }
+        }
+
+        int centerX = (minX + maxX) / 2;
+        int centerY = (minY + maxY) / 2;
+        int centerZ = (minZ + maxZ) / 2;
+
+        for (size_t mi = 0; mi < voxFile.models.size(); ++mi) {
+            const VoxelModel& model = voxFile.models[mi];
+            const ModelTransform& tr = voxFile.modelTransforms[mi];
+            for (const auto& voxData : model.voxels) {
+                int wx = static_cast<int>(voxData.x) + tr.tx - model.sizeX / 2 - centerX;
+                int wy = static_cast<int>(voxData.y) + tr.ty - model.sizeY / 2 - centerY;
+                int wz = static_cast<int>(voxData.z) + tr.tz - model.sizeZ / 2 - centerZ;
+
+                const RGBAColor& paletteColor = voxFile.palette[voxData.colorIndex - 1];
+                Voxel voxel(
+                    wx, wy, wz,
+                    paletteColor.r / 255.0f,
+                    paletteColor.g / 255.0f,
+                    paletteColor.b / 255.0f,
+                    paletteColor.a / 255.0f
+                );
+                voxels.push_back(voxel);
+            }
+        }
+
+        std::cout << "Successfully loaded " << voxels.size() << " voxels from "
+                  << voxFile.models.size() << " sub-models" << std::endl;
+        return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "Error loading VOX file: " << e.what() << std::endl;
+        return -1;
+    }
+}
 
 int main()
 {
@@ -102,65 +200,9 @@ int main()
 
     // Load voxel model
     std::vector<Voxel> voxels;
-    try {
-        std::cout << "Loading .vox..." << std::endl;
-        VoxFile voxFile = VoxReader::load("assets/voxes/pieta.vox");
 
-        std::cout << "VOX file version: " << voxFile.version << std::endl;
-        std::cout << "Number of models: " << voxFile.models.size() << std::endl;
-
-        // Merge all sub-models with their scene graph transforms
-        size_t totalVoxelCount = 0;
-        for (const auto& m : voxFile.models) totalVoxelCount += m.voxels.size();
-        voxels.reserve(totalVoxelCount);
-
-        // Compute overall bounding box center for centering
-        int minX = INT_MAX, minY = INT_MAX, minZ = INT_MAX;
-        int maxX = INT_MIN, maxY = INT_MIN, maxZ = INT_MIN;
-
-        for (size_t mi = 0; mi < voxFile.models.size(); ++mi) {
-            const VoxelModel& model = voxFile.models[mi];
-            const ModelTransform& tr = voxFile.modelTransforms[mi];
-            for (const auto& v : model.voxels) {
-                // VOX scene graph translation is in world space
-                // Voxel local coords are [0, size), transform gives the model origin offset
-                int wx = static_cast<int>(v.x) + tr.tx - model.sizeX / 2;
-                int wy = static_cast<int>(v.y) + tr.ty - model.sizeY / 2;
-                int wz = static_cast<int>(v.z) + tr.tz - model.sizeZ / 2;
-                minX = std::min(minX, wx); maxX = std::max(maxX, wx);
-                minY = std::min(minY, wy); maxY = std::max(maxY, wy);
-                minZ = std::min(minZ, wz); maxZ = std::max(maxZ, wz);
-            }
-        }
-
-        int centerX = (minX + maxX) / 2;
-        int centerY = (minY + maxY) / 2;
-        int centerZ = (minZ + maxZ) / 2;
-
-        for (size_t mi = 0; mi < voxFile.models.size(); ++mi) {
-            const VoxelModel& model = voxFile.models[mi];
-            const ModelTransform& tr = voxFile.modelTransforms[mi];
-            for (const auto& voxData : model.voxels) {
-                int wx = static_cast<int>(voxData.x) + tr.tx - model.sizeX / 2 - centerX;
-                int wy = static_cast<int>(voxData.y) + tr.ty - model.sizeY / 2 - centerY;
-                int wz = static_cast<int>(voxData.z) + tr.tz - model.sizeZ / 2 - centerZ;
-
-                const RGBAColor& paletteColor = voxFile.palette[voxData.colorIndex - 1];
-                Voxel voxel(
-                    wx, wy, wz,
-                    paletteColor.r / 255.0f,
-                    paletteColor.g / 255.0f,
-                    paletteColor.b / 255.0f,
-                    paletteColor.a / 255.0f
-                );
-                voxels.push_back(voxel);
-            }
-        }
-
-        std::cout << "Successfully loaded " << voxels.size() << " voxels from "
-                  << voxFile.models.size() << " sub-models" << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Error loading VOX file: " << e.what() << std::endl;
+    if (loadVoxFile(voxels) != 0) {
+        std::cerr << "Failed to load voxel model. Exiting." << std::endl;
         return -1;
     }
 
@@ -295,6 +337,28 @@ int main()
         ImGui::Separator();
         if (ImGui::Button("Close"))
             glfwSetWindowShouldClose(window, true);
+
+        // File path input with browse button
+        ImGui::Text("VOX File:");
+        ImGui::PushItemWidth(-80.0f);
+        ImGui::InputText("##voxpath", &vox_path);
+        ImGui::PopItemWidth();
+        ImGui::SameLine();
+        if (ImGui::Button("Browse...")) {
+            std::string selectedPath;
+            if (openFileDialog(selectedPath, window)) {
+                vox_path = selectedPath;
+            }
+        }
+
+        if (ImGui::Button("Reload"))
+        {
+            if (loadVoxFile(voxels) != 0) {
+                std::cerr << "Failed to load voxel model. Exiting." << std::endl;
+                return -1;
+            }
+            renderer.setVoxels(voxels);
+        }
         ImGui::End();
 
         // Render ImGui

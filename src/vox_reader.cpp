@@ -1,7 +1,5 @@
 /**
  * VOX File Reader Implementation
- *
- * Implements parsing of MagicaVoxel .vox format files.
  */
 
 #include "vox_reader.h"
@@ -104,7 +102,7 @@ void VoxReader::initializeDefaultPalette(std::array<RGBAColor, 256>& palette) {
         float frac = hue - region;
         
         uint8_t r, g, b;
-        int brightness = 128 + (i % 128);  // Vary brightness
+        uint8_t brightness = 128u + (i % 128u);  // Vary brightness
         
         switch (region % 6) {
             case 0: r = brightness; g = static_cast<uint8_t>(brightness * frac); b = 0; break;
@@ -284,7 +282,7 @@ void VoxReader::parseTransformNode(std::ifstream& file, VoxFile& voxFile, uint32
             if (it != frameAttrs.end()) {
                 // Parse "x y z" translation string (in VOX coordinate system)
                 int32_t vx, vy, vz;
-                sscanf(it->second.c_str(), "%d %d %d", &vx, &vy, &vz);
+                sscanf_s(it->second.c_str(), "%d %d %d", &vx, &vy, &vz);
                 // Swap Y and Z to match the coordinate swap in parseXYZIChunk
                 node.tx = vx;
                 node.ty = vz;
