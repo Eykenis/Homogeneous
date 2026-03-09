@@ -1,4 +1,4 @@
-Homogeneous is currently a ray-casting based voxel renderer written by C++ and CUDA. It is not yet usable.
+Homogeneous is currently a ray-casting based voxel renderer written by C++ with OpenGL.
 
 # Install
 Support Platform: Windows
